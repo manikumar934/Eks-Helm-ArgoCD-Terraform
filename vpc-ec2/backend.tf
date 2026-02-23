@@ -11,7 +11,7 @@ terraform {
     }
   }
   backend "s3" {
-    bucket       = "dev-lokesh01-tf-bucket"
+    bucket       = "dev-tarak-tf-bucket"
     region       = "us-east-1"
     key          = "EKS-ArgoCD-AWS-LB-Controller-Terraform/vpc-ec2.tfstate"
     use_lockfile = true

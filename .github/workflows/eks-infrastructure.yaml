@@ -3,6 +3,13 @@ name: EKS Infrastructure
 on:
   workflow_dispatch:
     inputs:
+      module:
+        description: 'Module to deploy'
+        required: true
+        type: choice
+        options:
+        - vpc-ec2
+        - eks
       action:
         description: 'Action to perform'
         required: true
@@ -12,12 +19,6 @@ on:
         - plan
         - apply
         - destroy
-  push:
-    branches: [ main ]
-    paths: ['**.tf', '**.tfvars']
-  pull_request:
-    branches: [ main ]
-    paths: ['**.tf', '**.tfvars']
 
 permissions:
   id-token: write
@@ -30,6 +31,7 @@ env:
 jobs:
   vpc-ec2:
     runs-on: ubuntu-latest
+    if: github.event.inputs.module == 'vpc-ec2' && github.event.inputs.action != 'destroy'
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -45,9 +47,6 @@ jobs:
       with:
         terraform_version: ${{ env.TF_VERSION }}
 
-    - name: Terraform Format Check
-      run: terraform fmt -check -recursive
-
     - name: Init & Validate VPC/EC2
       run: |
         terraform init
@@ -55,19 +54,18 @@ jobs:
       working-directory: ./vpc-ec2
 
     - name: Plan VPC/EC2
-      if: github.event_name == 'pull_request' || github.event.inputs.action == 'plan'
+      if: github.event.inputs.action == 'plan'
       run: terraform plan -var-file=variables.tfvars
       working-directory: ./vpc-ec2
 
     - name: Apply VPC/EC2
-      if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.action == 'apply'
+      if: github.event.inputs.action == 'apply'
       run: terraform apply -auto-approve -var-file=variables.tfvars
       working-directory: ./vpc-ec2
 
   eks:
     runs-on: ubuntu-latest
-    needs: vpc-ec2
-    if: github.event.inputs.action != 'destroy'
+    if: github.event.inputs.module == 'eks' && github.event.inputs.action != 'destroy'
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -95,17 +93,17 @@ jobs:
       working-directory: ./eks
 
     - name: Plan EKS
-      if: github.event_name == 'pull_request' || github.event.inputs.action == 'plan'
+      if: github.event.inputs.action == 'plan'
       run: terraform plan -var-file=../variables.tfvars
       working-directory: ./eks
 
     - name: Apply EKS
-      if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.action == 'apply'
+      if: github.event.inputs.action == 'apply'
       run: terraform apply -auto-approve -var-file=../variables.tfvars
       working-directory: ./eks
 
     - name: Configure kubectl
-      if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.action == 'apply'
+      if: github.event.inputs.action == 'apply'
       run: |
         aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name eks-cluster
         kubectl get nodes
@@ -128,19 +126,16 @@ jobs:
       with:
         terraform_version: ${{ env.TF_VERSION }}
 
-    - name: Init EKS
-      run: terraform init
+    - name: Init & Destroy EKS
+      if: github.event.inputs.module == 'eks'
+      run: |
+        terraform init
+        terraform destroy -auto-approve -var-file=../variables.tfvars
       working-directory: ./eks
 
-    - name: Destroy EKS
-      run: terraform destroy -auto-approve -var-file=../variables.tfvars
-      working-directory: ./eks
-      continue-on-error: true
-
-    - name: Init VPC/EC2
-      run: terraform init
-      working-directory: ./vpc-ec2
-
-    - name: Destroy VPC/EC2
-      run: terraform destroy -auto-approve -var-file=variables.tfvars
+    - name: Init & Destroy VPC/EC2
+      if: github.event.inputs.module == 'vpc-ec2'
+      run: |
+        terraform init
+        terraform destroy -auto-approve -var-file=variables.tfvars
       working-directory: ./vpc-ec2

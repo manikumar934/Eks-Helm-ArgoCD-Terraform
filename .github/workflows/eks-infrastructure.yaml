@@ -126,6 +126,14 @@ jobs:
       with:
         terraform_version: ${{ env.TF_VERSION }}
 
+    - name: Destroy EKS First
+      if: github.event.inputs.module == 'vpc-ec2'
+      run: |
+        terraform init
+        terraform destroy -auto-approve -var-file=../variables.tfvars
+      working-directory: ./eks
+      continue-on-error: true
+
     - name: Init & Destroy EKS
       if: github.event.inputs.module == 'eks'
       run: |

@@ -126,22 +126,30 @@ jobs:
       with:
         terraform_version: ${{ env.TF_VERSION }}
 
+    - name: Setup Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: '3.12.0'
+
     - name: Destroy EKS First
       if: github.event.inputs.module == 'vpc-ec2'
       run: |
         terraform init
-        terraform destroy -auto-approve -var-file=../variables.tfvars
+        terraform destroy -auto-approve -var-file=../variables.tfvars || echo "EKS already destroyed"
       working-directory: ./eks
-      continue-on-error: true
 
-    - name: Init & Destroy EKS
+    - name: Destroy EKS
       if: github.event.inputs.module == 'eks'
       run: |
         terraform init
         terraform destroy -auto-approve -var-file=../variables.tfvars
       working-directory: ./eks
 
-    - name: Init & Destroy VPC/EC2
+    - name: Wait for cleanup
+      if: github.event.inputs.module == 'vpc-ec2'
+      run: sleep 60
+
+    - name: Destroy VPC/EC2
       if: github.event.inputs.module == 'vpc-ec2'
       run: |
         terraform init

@@ -45,7 +45,7 @@ addons = [
 ]
 
 # IAM
-ec2-iam-role             = "ec2-ssm-role"
+ec2-iam-role             = "ec2-ssmm-role"
 ec2-iam-role-policy      = "ec2-ssm-role-policy"
 ec2-iam-instance-profile = "ec2-ssm-instance-profile"
 

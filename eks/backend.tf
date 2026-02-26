@@ -19,7 +19,7 @@ terraform {
     }
   }
   backend "s3" {
-    bucket       = "dev-tarak01-tf-bucket"
+    bucket       = "dev-lokesh01-tf-bucket"
     region       = "us-east-1"
     key          = "EKS-ArgoCD-AWS-LB-Controller-Terraform/eks.tfstate"
     encrypt      = true
